@@ -1,0 +1,8 @@
+web/node_modules/
+web/dist/app/
+*.db
+*.db-shm
+*.db-wal
+/bin/
+lookout-certs/
+web/tsconfig.tsbuildinfo

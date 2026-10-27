@@ -1,0 +1,105 @@
+@import "@fontsource-variable/ibm-plex-sans/wght.css";
+@import "@fontsource-variable/lilex/wght.css";
+@import "tailwindcss";
+
+/* Tokens: neutral ink and surfaces, one blue accent for interaction, and a
+   reserved status palette for risk. Status colors never appear without a
+   text label next to them. */
+:root {
+  color-scheme: light;
+  --page: #f3f3f0;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --sunken: #f7f7f5;
+  --ink: #0b0b0b;
+  --ink-2: #45443f;
+  --muted: #6f6d66;
+  --line: #e3e2db;
+  --line-strong: #c9c8bf;
+  --hover: rgba(11, 11, 11, 0.035);
+  --selected: rgba(37, 106, 191, 0.08);
+  --shadow: 0 1px 2px rgba(20, 20, 15, 0.05), 0 1px 1px rgba(20, 20, 15, 0.03);
+
+  --accent: #256abf;
+  --accent-ink: #1c5cab;
+  --on-accent: #ffffff;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --success-text: #006300;
+  --critical-text: #b42f2f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0f0f0e;
+    --surface: #1a1a19;
+    --raised: #222221;
+    --sunken: #141413;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #93918a;
+    --line: #2c2c2a;
+    --line-strong: #3d3d3a;
+    --hover: rgba(255, 255, 255, 0.04);
+    --selected: rgba(57, 135, 229, 0.14);
+    --shadow: none;
+
+    --accent: #2a78d6;
+    --accent-ink: #6da7ec;
+
+    --success-text: #0ca30c;
+    --critical-text: #f07a7a;
+  }
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lilex Variable", ui-monospace, monospace;
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --color-success-text: var(--success-text);
+  --color-critical-text: var(--critical-text);
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--page);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Code is data here (IPs, paths, fingerprints): no ligatures. */
+  .font-mono,
+  code,
+  pre {
+    font-variant-ligatures: none;
+    font-feature-settings: "calt" 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}

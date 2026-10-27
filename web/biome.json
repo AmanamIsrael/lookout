@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "formatter": { "indentStyle": "space", "lineWidth": 110 },
+  "linter": { "enabled": true, "rules": { "recommended": true } },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "javascript": { "formatter": { "quoteStyle": "double" } }
+}
