@@ -9,7 +9,7 @@ It has three parts:
 3. **The dashboard** is served by `lookout-server`. It calls actors *visitors*. It has four tabs:
    - **Visitors** lists them by risk. Each visitor page shows what lookout thinks it is, why, and what you can do about it.
    - **Review** holds the suggestions that wait for your approval, the decisions in force, and their history.
-   - **Outbound** lists the outbound connections from your servers.
+   - **Outbound** lists outbound TCP connections from your servers. Search or filter the list, then select a row to inspect its process, destination, timestamps, counts, and flags. You can copy the raw record.
    - **Sensors** manages sensor keys.
 
 ## How an actor is judged
@@ -108,7 +108,7 @@ server/analyze/      rules and known agents
 server/verify/       reverse DNS and Web Bot Auth
 server/triage/       LLM triage (OpenRouter, Anthropic)
 server/store/        SQLite
-web/                 dashboard (React, TanStack Query, Tailwind)
+web/                 dashboard (React, TanStack Router, TanStack Query, shadcn, Tailwind)
 ```
 
 ## Limits

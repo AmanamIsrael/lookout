@@ -1,112 +1,153 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bot, Hand, ListChecks } from "lucide-react";
-import { api, type Decision } from "../api";
-import { ago, claimedName, duration, kindEffect, kindLabel, until } from "../lib/format";
-import { Button, ClassBadge, ErrorText, RiskBadge, Tag } from "./ui";
+import { ArrowSquareOutIcon, HandIcon, RobotIcon, SparkleIcon } from "@phosphor-icons/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
+import { toast } from "sonner"
+import { api, type Decision, type EnforcementKind } from "@/api"
+import { Button } from "@/components/ui/button"
+import { ago, claimedName, duration, kindLabel, until } from "@/lib/format"
+import { cn } from "@/lib/utils"
+import { RiskBadge } from "./risk"
 
-const sourceLabel = {
-  llm: { icon: Bot, text: "Suggested by AI" },
-  rules: { icon: ListChecks, text: "Suggested by rules" },
-  manual: { icon: Hand, text: "Added by you" },
-} as const;
+export const kindBar: Record<EnforcementKind, string> = {
+  block: "bg-risk-hostile",
+  challenge: "bg-primary",
+  rate_limit: "bg-risk-suspicious",
+}
 
-const statusText = (d: Decision) => {
-  switch (d.status) {
+const sourceMeta = {
+  llm: { icon: RobotIcon, text: "Suggested by AI" },
+  rules: { icon: SparkleIcon, text: "Suggested by rules" },
+  manual: { icon: HandIcon, text: "Added by you" },
+} as const
+
+function statusLine(decision: Decision) {
+  switch (decision.status) {
     case "pending":
-      return `Suggested ${ago(d.created_at)}. Lasts ${duration(d.ttl_minutes)} once approved.`;
+      return `Waiting · lasts ${duration(decision.ttl_minutes)} once approved`
     case "active":
-      return d.expires_at ? `Enforced. Ends ${until(d.expires_at)}.` : "Enforced.";
+      return decision.expires_at ? `In force · ends ${until(decision.expires_at)}` : "In force"
     case "expired":
-      return d.expires_at ? `Ended ${ago(d.expires_at)}.` : "Ended.";
+      return decision.expires_at ? `Expired ${ago(decision.expires_at)}` : "Expired"
     case "rejected":
-      return `Rejected ${d.decided_at ? ago(d.decided_at) : ""}.`;
+      return `Rejected${decision.decided_at ? ` ${ago(decision.decided_at)}` : ""}`
     case "revoked":
-      return `Revoked ${d.decided_at ? ago(d.decided_at) : ""}.`;
+      return `Revoked${decision.decided_at ? ` ${ago(decision.decided_at)}` : ""}`
   }
-};
+}
 
-const target = (d: Decision) => (d.ja4 ? `${d.ip}, this TLS fingerprint only` : `everything from ${d.ip}`);
+const target = (decision: Decision) =>
+  decision.ja4 ? `${decision.ip} · this TLS fingerprint only` : `everything from ${decision.ip}`
 
-/**
- * One decision with the actions its state allows. Inside a visitor's page
- * (inActor), the visitor and the AI's reasoning are already on screen, so the
- * row leaves them out.
- */
 export function DecisionRow({
-  d,
-  onOpenActor,
+  decision,
   inActor = false,
+  compact = false,
+  className,
 }: {
-  d: Decision;
-  onOpenActor?: (id: number) => void;
-  inActor?: boolean;
+  decision: Decision
+  inActor?: boolean
+  compact?: boolean
+  className?: string
 }) {
-  const qc = useQueryClient();
+  const qc = useQueryClient()
   const act = useMutation({
-    mutationFn: (verb: "approve" | "reject" | "revoke") => api.transition(d.id, verb),
-    onSettled: () => qc.invalidateQueries(),
-  });
-  const Source = sourceLabel[d.source];
-  const verb = d.kind === "rate_limit" ? `Rate limit to ${d.rpm}/min` : kindLabel[d.kind];
-  const live = d.status === "pending" || d.status === "active";
-  const actor = inActor ? undefined : d.actor;
-  const showReason = d.reason && !(inActor && d.source === "llm");
+    mutationFn: (verb: "approve" | "reject" | "revoke") => api.transition(decision.id, verb),
+    onSuccess: (_data, verb) => {
+      toast.success(
+        verb === "approve"
+          ? `${kindLabel[decision.kind]} approved`
+          : verb === "reject"
+            ? "Suggestion rejected"
+            : "Decision revoked",
+      )
+      qc.invalidateQueries()
+    },
+  })
+  const Source = sourceMeta[decision.source]
+  const live = decision.status === "pending" || decision.status === "active"
+  const actor = inActor ? undefined : decision.actor
 
   return (
-    <div className={`flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start ${live ? "" : "opacity-75"}`}>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-sm font-semibold">
-            {verb}
-            {actor && <span> {claimedName(actor.ua)}</span>}
-          </span>
-          {actor && <ClassBadge value={actor.class} />}
-          {actor && <RiskBadge risk={actor.risk} />}
-        </div>
-        <p className="mt-0.5 font-mono text-xs text-ink-2">{target(d)}</p>
-        {showReason && <p className="mt-2 text-sm leading-snug">{d.reason}</p>}
-        {d.status === "pending" && <p className="mt-1 text-xs text-ink-2">{kindEffect[d.kind]}</p>}
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <Tag>
-            <Source.icon className="mr-1 size-3" aria-hidden />
-            {Source.text}
-          </Tag>
-          <span>{statusText(d)}</span>
-          {onOpenActor && d.actor_id !== null && (
-            <button
-              type="button"
-              className="underline decoration-line-strong underline-offset-2 hover:text-ink"
-              onClick={() => d.actor_id !== null && onOpenActor(d.actor_id)}
-            >
-              Open visitor
-            </button>
+    <div className={cn("relative flex flex-col gap-3 py-3.5 pr-4 pl-5", !live && "opacity-65", className)}>
+      <span className={cn("absolute inset-y-0 left-0 w-0.5", kindBar[decision.kind])} aria-hidden />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-x-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-heading text-xs font-semibold tracking-wide uppercase">
+              {decision.kind === "rate_limit" ? `Rate limit ${decision.rpm}/min` : kindLabel[decision.kind]}
+            </span>
+            {actor && <span className="text-xs text-muted-foreground">on {claimedName(actor.ua)}</span>}
+            {actor && <RiskBadge risk={actor.risk} />}
+          </div>
+          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{target(decision)}</p>
+          {decision.reason && !(inActor && decision.source === "llm") && (
+            <p className={cn("mt-2 max-w-2xl text-xs/relaxed", compact && "line-clamp-2")}>
+              {decision.reason}
+            </p>
           )}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Source.icon className="size-3" />
+              {Source.text}
+            </span>
+            <span aria-hidden>·</span>
+            <span>{statusLine(decision)}</span>
+            {!inActor && decision.actor_id !== null && (
+              <>
+                <span aria-hidden>·</span>
+                <Link
+                  to="/visitors/$actorId"
+                  params={{ actorId: String(decision.actor_id) }}
+                  className="inline-flex items-center gap-0.5 underline decoration-border underline-offset-2 hover:text-foreground"
+                >
+                  Open visitor <ArrowSquareOutIcon className="size-3" />
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-        <ErrorText error={act.error} />
-      </div>
-      {live && (
-        <div className="flex shrink-0 gap-2">
-          {d.status === "pending" && (
-            <>
-              <Button disabled={act.isPending} onClick={() => act.mutate("reject")}>
-                Reject
-              </Button>
+        {live && (
+          <div className="flex shrink-0 gap-1.5 max-sm:w-full">
+            {decision.status === "pending" ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="max-sm:flex-1"
+                  disabled={act.isPending}
+                  onClick={() => act.mutate("reject")}
+                >
+                  Reject
+                </Button>
+                <Button
+                  variant={decision.kind === "block" ? "destructive" : "default"}
+                  size="sm"
+                  className="max-sm:flex-1"
+                  disabled={act.isPending}
+                  onClick={() => act.mutate("approve")}
+                >
+                  Approve {kindLabel[decision.kind].toLowerCase()}
+                </Button>
+              </>
+            ) : (
               <Button
-                variant={d.kind === "block" ? "danger" : "primary"}
+                variant="outline"
+                size="sm"
+                className="max-sm:flex-1"
                 disabled={act.isPending}
-                onClick={() => act.mutate("approve")}
+                onClick={() => act.mutate("revoke")}
               >
-                Approve {kindLabel[d.kind].toLowerCase()}
+                Revoke
               </Button>
-            </>
-          )}
-          {d.status === "active" && (
-            <Button disabled={act.isPending} onClick={() => act.mutate("revoke")}>
-              Revoke
-            </Button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
+      </div>
+      {act.error && (
+        <p role="alert" className="text-[11px] text-destructive">
+          {act.error instanceof Error ? act.error.message : "That did not work. Try again."}
+        </p>
       )}
     </div>
-  );
+  )
 }
